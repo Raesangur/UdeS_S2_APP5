@@ -150,6 +150,10 @@ def readFile(file):
         # word_no_punc = (re.sub(PONC, " ", line).split())
         # word_no_punc = word_no_punc.lower()
 
+        # i sert à donner une première valeur à word_no_punc_2
+        word_no_punc_2 = ""
+        i = 0
+
         for word in line.split():
             # remove punctuation
             word_no_punc = ""
@@ -166,19 +170,38 @@ def readFile(file):
                 if char is "-":
                     # séparer les deux mots
                     # mettre le premier mot dans la liste
-                    if len(word_no_punc) > 2 and args.m is 1:
+
+                    # unigramme
+                    if len(word_no_punc) > 2 and args.m == 1:
                         addInDictionnairy(word_no_punc)
+
+                    # bigramme
+                    if len(word_no_punc) > 2 and len(word_no_punc_2) > 2 and args.m == 2:
+                        addInDictionnairy(word_no_punc_2 + ' , ' + word_no_punc)
+                        word_no_punc_2 = word_no_punc
 
                     # remettre une chaine vide pour le mot après le trait d'union
                     word_no_punc = ""
 
-            if len(word_no_punc) > 2:
+            # unigramme
+            if len(word_no_punc) > 2 and args.m == 1:
                 # ne pas oublier de mettre les mots avant les traits d'union dans la liste!!!
                 addInDictionnairy(word_no_punc)
+
+            # bigramme
+            if i == 0 and len(word_no_punc) > 2:
+                # donne la première valeur de word_no_punc_2
+                word_no_punc_2 = word_no_punc
+                i = 1
+
+            elif len(word_no_punc) > 2 and len(word_no_punc_2) > 2 and args.m == 2:
+                addInDictionnairy(word_no_punc_2 + ' , ' + word_no_punc)
+                word_no_punc_2 = word_no_punc
 
 
 # créer dictionnaire vide
 dict = {}
+
 
 if str(args.a) in ['Balzac']:
     readFile('HonoredeBalzac-Lacomédiehumaine-Volume1.txt')
@@ -229,4 +252,6 @@ elif str(args.a) in ['Zola']:
 
 # sort dict
 dict = sorted(dict.items(), key=lambda x:x[1], reverse=1)
-print(dict)
+#print(dict)
+first_values = list(dict)[:1000]
+print(first_values)
