@@ -74,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', required=True, help='Repertoire contenant les sous-repertoires des auteurs')
     parser.add_argument('-a', help='Auteur a traiter')
     parser.add_argument('-f', help='Fichier inconnu a comparer')
-    parser.add_argument('-m', required=True, type=int, choices=range(1, 2),
+    parser.add_argument('-m', required=True, type=int, choices=range(1, 3),
                         help='Mode (1 ou 2) - unigrammes ou digrammes')
     parser.add_argument('-F', type=int, help='Indication du rang (en frequence) du mot (ou bigramme) a imprimer')
     parser.add_argument('-G', type=int, help='Taille du texte a generer')
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                 else:
                     book_content[word] = 1
         elif args.m == 2:
-            for word1, word2 in zip(words):
+            for word1, word2 in zip(words, words[:]):
                 newWord = word1 + ' ' + word2
 
                 if newWord in book_content:
@@ -182,9 +182,5 @@ if __name__ == "__main__":
 
     print(book_content)
 
-    bestword = ("BonMatin", 1)
-    for word in book_content.keys():
-        if book_content[word] > bestword[1]:
-            bestword = word, book_content[word]
-
-    print(bestword)
+    book_content = sorted(book_content)
+    print(book_content)
