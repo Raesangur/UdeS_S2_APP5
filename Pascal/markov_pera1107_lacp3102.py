@@ -46,27 +46,101 @@
 #  avec -v:  mode verbose, imprimera l'ensemble des valeurs des paramètres (fait déjà partie du gabarit)
 
 
-import math
 import argparse
 import glob
 import sys
 import os
 import re
+from collections import OrderedDict
 from pathlib import Path
 from random import randint
 from random import choice
 
 # Ajouter ici les signes de ponctuation à retirer
-#PONC1 = "\\!|\\'|\\)|\\(|\\,| |\\.|; |: |\\?|\\-|_|\n"
-PONC = '|'.join(['\\' + x for x in ['!', "'", ')', '(', ',', ' ', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t']])
+initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t', ' ']
+# initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '»', '«']
+PONC = '|'.join(['\\' + x for x in initialPonc])
 
 
-#  Vous devriez inclure vos classes et méthodes ici, qui seront appellées à partir du main
+def AddToDict(dictionary, newWord):
+    """
+        Add a string to an existing dictionary
+    :param dictionary: Existing dictionary into which the new element should be inserted
+    :param newWord:    Element to insert
+    """
+
+    # Adding a string to an existing dictionnary
+    if newWord in dictionary:
+        dictionary[newWord] += 1
+    else:
+        dictionary[newWord] = 1
+
+
+def ReadBook(bookpath, book_content):
+    """
+    Read a `.txt`-extention book from path, and insert all it's n-grams into an existing dictionary.
+    This function parses each word individually, line by line, removing punctuation (see `PONC`), words with less than
+    3 letters, and turning all letters to lowercase.
+    :note  If the `-P` argument is used, punctuation is kept
+    :param bookpath:     Path of the book to read (with .txt extension)
+    :param book_content: Existing dictionary into which new words will be inserted
+    """
+    if bookpath[-4:] != ".txt":
+        return
+
+    file = open(bookpath, 'r', encoding="utf8")
+
+    for line in file.readlines():
+        if not remove_ponc:
+            words = [x.lower() for x in re.split(PONC, line) if x != '' and len(x) > 2]
+        else:
+            words = [x.lower() for x in line.split() if len(x) > 2]
+
+        if args.m == 1:
+            for word in words:
+                AddToDict(book_content, word)
+
+        elif args.m == 2:
+            for word1, word2 in zip(words, words[1:]):
+                newWord = word1 + ' ' + word2
+                AddToDict(book_content, newWord)
+
+
+def ReadBooks(path, books):
+    """
+    Read all the specified books (.txt extension) in the specified path
+    :param path:  Path to the books
+    :param books: List with the name of the book files
+    :return: Dictionary containing all the words and their occurence count
+    """
+    books_content = {}
+    for currentBook in books:
+        rep_book = os.path.normpath(path + '\\' + currentBook)
+        ReadBook(rep_book, books_content)
+
+    return books_content
+
+
+def ReadAuthor(author):
+    """
+    Read all the books from an author
+    :param author: Name of the author
+    :return: Sorted list of all the author's words and their occurence count
+    """
+    rep_books = os.path.normpath(rep_aut + "\\" + author)
+    books = os.listdir(rep_books)
+
+    grammes = ReadBooks(rep_books, books)
+    grammes = sorted(grammes.items(), key=lambda x: x[1], reverse=True)
+    return grammes
+
 
 
 # Main: lecture des paramètres et appel des méthodes appropriées
 #
-#       argparse permet de lire les paramètres sur la ligne de commande
+#       argparse permet de lire les paramètres sur
+# # def CalcPercent(dictionary):
+# #    sumWord =la ligne de commande
 #             Certains paramàtres sont obligatoires ("required=True")
 #             Ces paramètres doivent êtres fournis à python lorsque l'application est exécutée
 if __name__ == "__main__":
@@ -74,14 +148,13 @@ if __name__ == "__main__":
     parser.add_argument('-d', required=True, help='Repertoire contenant les sous-repertoires des auteurs')
     parser.add_argument('-a', help='Auteur a traiter')
     parser.add_argument('-f', help='Fichier inconnu a comparer')
-    parser.add_argument('-m', required=True, type=int, choices=range(1, 3),
-                        help='Mode (1 ou 2) - unigrammes ou digrammes')
+    parser.add_argument('-m', required=True, type=int, choices=range(1, 4),
+                        help='Mode (1, 2 ou 3) - unigrammes, bigrammes ou trigrammes')
     parser.add_argument('-F', type=int, help='Indication du rang (en frequence) du mot (ou bigramme) a imprimer')
     parser.add_argument('-G', type=int, help='Taille du texte a generer')
     parser.add_argument('-g', help='Nom de base du fichier de texte a generer')
     parser.add_argument('-v', action='store_true', help='Mode verbose')
     parser.add_argument('-P', action='store_true', help='Retirer la ponctuation')
-    parser.add_argument('-M', action='store_true', help='Retirer les majuscules')
     args = parser.parse_args()
 
     # Lecture du répertoire des auteurs, obtenir la liste des auteurs
@@ -135,52 +208,10 @@ if __name__ == "__main__":
             aut = a.split("/")
             print("    " + aut[-1])
 
-# À partir d'ici, vous devriez inclure les appels à votre code
-    rep_books = os.path.normpath(rep_aut + "\\" + args.a)
-    books = os.listdir(rep_books)
-    print(books)
+    # À partir d'ici, vous devriez inclure les appels à votre code
+    authorWords = {}
+    for a in authors:
+        authorWords[a] = ReadAuthor(a)
+        print(a + ": " + str(authorWords[a][:3]))
 
-    # book_content = []
-    # rep_book = os.path.normpath(rep_books + '\\' + books[1])
-    # file = open(rep_book, 'r', encoding="utf8")
-    # for line in file.readlines():
-    #     if remove_ponc:
-    #         words = [x for x in re.split(PONC, line) if x != '']
-    #     else:
-    #         words = line.split()
-    #
-    #     book_content.extend(words)
-    #
-    # print(book_content)
-
-    book_content = {}
-    rep_book = os.path.normpath(rep_books + '\\' + books[1])
-    file = open(rep_book, 'r', encoding="utf8")
-    for line in file.readlines():
-        if remove_ponc:
-            words = [x.lower() if args.M else x for x in re.split(PONC, line) if x != '']
-        else:
-            words = line.split()
-
-        if args.m == 1:
-            for word in words:
-                if len(word) <= 2:
-                    continue
-
-                if word in book_content:
-                    book_content[word] += 1
-                else:
-                    book_content[word] = 1
-        elif args.m == 2:
-            for word1, word2 in zip(words, words[:]):
-                newWord = word1 + ' ' + word2
-
-                if newWord in book_content:
-                    book_content[newWord] += 1
-                else:
-                    book_content[newWord] = 1
-
-    print(book_content)
-
-    book_content = sorted(book_content)
-    print(book_content)
+    #if args.f and args.a:
