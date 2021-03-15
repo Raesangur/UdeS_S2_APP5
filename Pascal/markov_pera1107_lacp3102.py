@@ -46,7 +46,6 @@
 #  avec -v:  mode verbose, imprimera l'ensemble des valeurs des paramètres (fait déjà partie du gabarit)
 
 
-import math
 import argparse
 import glob
 import sys
@@ -58,29 +57,41 @@ from random import randint
 from random import choice
 
 # Ajouter ici les signes de ponctuation à retirer
-# PONC1 = "\\!|\\'|\\)|\\(|\\,| |\\.|; |: |\\?|\\-|_|\n"
-PONC = '|'.join(['\\' + x for x in ['!', '\'', ')', '(', ',', ' ', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t']])
+initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t', ' ']
+# initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '»', '«']
+PONC = '|'.join(['\\' + x for x in initialPonc])
 
 
 def AddToDict(dictionary, newWord):
-    if type(newWord) == str:
-        if newWord in dictionary:
-            dictionary[newWord] += 1
-        else:
-            dictionary[newWord] = 1
+    """
+        Add a string to an existing dictionary
+    :param dictionary: Existing dictionary into which the new element should be inserted
+    :param newWord:    Element to insert
+    """
 
-    if type(newWord) == tuple:
-        if newWord[0] in dictionary:
-            dictionary[newWord[0]] += newWord[1]
-        else:
-            dictionary[newWord[0]] = newWord[1]
+    # Adding a string to an existing dictionnary
+    if newWord in dictionary:
+        dictionary[newWord] += 1
+    else:
+        dictionary[newWord] = 1
 
 
-#  Vous devriez inclure vos classes et méthodes ici, qui seront appellées à partir du main
-def ReadBook(bookFile):
-    book_content = {}
-    for line in bookFile.readlines():
-        if remove_ponc:
+def ReadBook(bookpath, book_content):
+    """
+    Read a `.txt`-extention book from path, and insert all it's n-grams into an existing dictionary.
+    This function parses each word individually, line by line, removing punctuation (see `PONC`), words with less than
+    3 letters, and turning all letters to lowercase.
+    :note  If the `-P` argument is used, punctuation is kept
+    :param bookpath:     Path of the book to read (with .txt extension)
+    :param book_content: Existing dictionary into which new words will be inserted
+    """
+    if bookpath[-4:] != ".txt":
+        return
+
+    file = open(bookpath, 'r', encoding="utf8")
+
+    for line in file.readlines():
+        if not remove_ponc:
             words = [x.lower() for x in re.split(PONC, line) if x != '' and len(x) > 2]
         else:
             words = [x.lower() for x in line.split() if len(x) > 2]
@@ -92,42 +103,44 @@ def ReadBook(bookFile):
         elif args.m == 2:
             for word1, word2 in zip(words, words[1:]):
                 newWord = word1 + ' ' + word2
-
                 AddToDict(book_content, newWord)
-
-        elif args.m == 3:
-            for word1, word2, word3 in zip(words, words[1:], words[2:]):
-                newWord = word1 + ' ' + word2 + ' ' + word3
-
-                AddToDict(book_content, newWord)
-
-    return book_content
 
 
 def ReadBooks(path, books):
+    """
+    Read all the specified books (.txt extension) in the specified path
+    :param path:  Path to the books
+    :param books: List with the name of the book files
+    :return: Dictionary containing all the words and their occurence count
+    """
     books_content = {}
     for currentBook in books:
         rep_book = os.path.normpath(path + '\\' + currentBook)
-        file = open(rep_book, 'r', encoding="utf8")
-        content = ReadBook(file)
-        for item in content.items():
-            AddToDict(books_content, item)
+        ReadBook(rep_book, books_content)
 
     return books_content
 
 
-def ReadAuthor():
-    rep_books = os.path.normpath(rep_aut + "\\" + args.a)
+def ReadAuthor(author):
+    """
+    Read all the books from an author
+    :param author: Name of the author
+    :return: Sorted list of all the author's words and their occurence count
+    """
+    rep_books = os.path.normpath(rep_aut + "\\" + author)
     books = os.listdir(rep_books)
 
     grammes = ReadBooks(rep_books, books)
-    grammes = OrderedDict(sorted(grammes.items(), key=lambda x: x[1], reverse=True))
+    grammes = sorted(grammes.items(), key=lambda x: x[1], reverse=True)
     return grammes
+
 
 
 # Main: lecture des paramètres et appel des méthodes appropriées
 #
-#       argparse permet de lire les paramètres sur la ligne de commande
+#       argparse permet de lire les paramètres sur
+# # def CalcPercent(dictionary):
+# #    sumWord =la ligne de commande
 #             Certains paramàtres sont obligatoires ("required=True")
 #             Ces paramètres doivent êtres fournis à python lorsque l'application est exécutée
 if __name__ == "__main__":
@@ -196,9 +209,9 @@ if __name__ == "__main__":
             print("    " + aut[-1])
 
     # À partir d'ici, vous devriez inclure les appels à votre code
-    authorWords = ReadAuthor()
-    it = iter(authorWords.items())
+    authorWords = {}
+    for a in authors:
+        authorWords[a] = ReadAuthor(a)
+        print(a + ": " + str(authorWords[a][:3]))
 
-    for i in range(100):
-        print(next(it))
-
+    #if args.f and args.a:
