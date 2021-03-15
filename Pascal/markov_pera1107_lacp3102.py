@@ -52,16 +52,77 @@ import glob
 import sys
 import os
 import re
+from collections import OrderedDict
 from pathlib import Path
 from random import randint
 from random import choice
 
 # Ajouter ici les signes de ponctuation à retirer
-#PONC1 = "\\!|\\'|\\)|\\(|\\,| |\\.|; |: |\\?|\\-|_|\n"
-PONC = '|'.join(['\\' + x for x in ['!', "'", ')', '(', ',', ' ', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t']])
+# PONC1 = "\\!|\\'|\\)|\\(|\\,| |\\.|; |: |\\?|\\-|_|\n"
+PONC = '|'.join(['\\' + x for x in ['!', '\'', ')', '(', ',', ' ', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t']])
+
+
+def AddToDict(dictionary, newWord):
+    if type(newWord) == str:
+        if newWord in dictionary:
+            dictionary[newWord] += 1
+        else:
+            dictionary[newWord] = 1
+
+    if type(newWord) == tuple:
+        if newWord[0] in dictionary:
+            dictionary[newWord[0]] += newWord[1]
+        else:
+            dictionary[newWord[0]] = newWord[1]
 
 
 #  Vous devriez inclure vos classes et méthodes ici, qui seront appellées à partir du main
+def ReadBook(bookFile):
+    book_content = {}
+    for line in bookFile.readlines():
+        if remove_ponc:
+            words = [x.lower() for x in re.split(PONC, line) if x != '' and len(x) > 2]
+        else:
+            words = [x.lower() for x in line.split() if len(x) > 2]
+
+        if args.m == 1:
+            for word in words:
+                AddToDict(book_content, word)
+
+        elif args.m == 2:
+            for word1, word2 in zip(words, words[1:]):
+                newWord = word1 + ' ' + word2
+
+                AddToDict(book_content, newWord)
+
+        elif args.m == 3:
+            for word1, word2, word3 in zip(words, words[1:], words[2:]):
+                newWord = word1 + ' ' + word2 + ' ' + word3
+
+                AddToDict(book_content, newWord)
+
+    return book_content
+
+
+def ReadBooks(path, books):
+    books_content = {}
+    for currentBook in books:
+        rep_book = os.path.normpath(path + '\\' + currentBook)
+        file = open(rep_book, 'r', encoding="utf8")
+        content = ReadBook(file)
+        for item in content.items():
+            AddToDict(books_content, item)
+
+    return books_content
+
+
+def ReadAuthor():
+    rep_books = os.path.normpath(rep_aut + "\\" + args.a)
+    books = os.listdir(rep_books)
+
+    grammes = ReadBooks(rep_books, books)
+    grammes = OrderedDict(sorted(grammes.items(), key=lambda x: x[1], reverse=True))
+    return grammes
 
 
 # Main: lecture des paramètres et appel des méthodes appropriées
@@ -74,14 +135,13 @@ if __name__ == "__main__":
     parser.add_argument('-d', required=True, help='Repertoire contenant les sous-repertoires des auteurs')
     parser.add_argument('-a', help='Auteur a traiter')
     parser.add_argument('-f', help='Fichier inconnu a comparer')
-    parser.add_argument('-m', required=True, type=int, choices=range(1, 3),
-                        help='Mode (1 ou 2) - unigrammes ou digrammes')
+    parser.add_argument('-m', required=True, type=int, choices=range(1, 4),
+                        help='Mode (1, 2 ou 3) - unigrammes, bigrammes ou trigrammes')
     parser.add_argument('-F', type=int, help='Indication du rang (en frequence) du mot (ou bigramme) a imprimer')
     parser.add_argument('-G', type=int, help='Taille du texte a generer')
     parser.add_argument('-g', help='Nom de base du fichier de texte a generer')
     parser.add_argument('-v', action='store_true', help='Mode verbose')
     parser.add_argument('-P', action='store_true', help='Retirer la ponctuation')
-    parser.add_argument('-M', action='store_true', help='Retirer les majuscules')
     args = parser.parse_args()
 
     # Lecture du répertoire des auteurs, obtenir la liste des auteurs
@@ -135,52 +195,10 @@ if __name__ == "__main__":
             aut = a.split("/")
             print("    " + aut[-1])
 
-# À partir d'ici, vous devriez inclure les appels à votre code
-    rep_books = os.path.normpath(rep_aut + "\\" + args.a)
-    books = os.listdir(rep_books)
-    print(books)
+    # À partir d'ici, vous devriez inclure les appels à votre code
+    authorWords = ReadAuthor()
+    it = iter(authorWords.items())
 
-    # book_content = []
-    # rep_book = os.path.normpath(rep_books + '\\' + books[1])
-    # file = open(rep_book, 'r', encoding="utf8")
-    # for line in file.readlines():
-    #     if remove_ponc:
-    #         words = [x for x in re.split(PONC, line) if x != '']
-    #     else:
-    #         words = line.split()
-    #
-    #     book_content.extend(words)
-    #
-    # print(book_content)
+    for i in range(100):
+        print(next(it))
 
-    book_content = {}
-    rep_book = os.path.normpath(rep_books + '\\' + books[1])
-    file = open(rep_book, 'r', encoding="utf8")
-    for line in file.readlines():
-        if remove_ponc:
-            words = [x.lower() if args.M else x for x in re.split(PONC, line) if x != '']
-        else:
-            words = line.split()
-
-        if args.m == 1:
-            for word in words:
-                if len(word) <= 2:
-                    continue
-
-                if word in book_content:
-                    book_content[word] += 1
-                else:
-                    book_content[word] = 1
-        elif args.m == 2:
-            for word1, word2 in zip(words, words[:]):
-                newWord = word1 + ' ' + word2
-
-                if newWord in book_content:
-                    book_content[newWord] += 1
-                else:
-                    book_content[newWord] = 1
-
-    print(book_content)
-
-    book_content = sorted(book_content)
-    print(book_content)
