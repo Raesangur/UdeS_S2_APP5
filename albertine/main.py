@@ -46,15 +46,9 @@
 ###  avec -v:  mode verbose, imprimera l'ensemble des valeurs des paramètres (fait deja partie du gabarit)
 
 
-import math
 import argparse
-import glob
-import sys
+import collections
 import os
-import re
-from pathlib import Path
-from random import randint
-from random import choice
 
 ### Ajouter ici les signes de ponctuation à retirer
 PONC = ["!", '"', "'", ")", "(", ",", ".", ";", ":", "?", "-", "_", "»", "«"]
@@ -131,28 +125,56 @@ if __name__ == "__main__":
 
 ### À partir d'ici, vous devriez inclure les appels à votre code
 
-def addInDictionnairy(word):
+def print_dictionnairy(dictionairy):
+    if args.m == 1:
+        # unigramme
+        print(dictionairy)
+
+    elif args.m == 2:
+        # bigramme
+        first_values = list(dictionairy)[:1000]
+        print(first_values)
+
+
+def addInDictionnairy(word, dictionnaire):
     if word in dict:
         # faire +1
-        dict[word] = dict[word] +1
+        dictionnaire[word] = dictionnaire[word] +1
     else:
         # ajouter le mot
-        dict[word] = 1
+        dictionnaire[word] = 1
 
-def readFile(file):
+
+def n_gramme_ajout_dict(word1, word2, dictionnaire):
+    # unigramme
+    if len(word1) > 2 and args.m == 1:
+        addInDictionnairy(word1, dictionnaire)
+
+    # bigramme
+    if len(word2) < 2 and len(word1) > 2 and args.m == 2:
+        # donne la première valeur de word_no_punc_2
+        word2 = word1
+
+    elif len(word1) > 2 and len(word2) > 2 and args.m == 2:
+        addInDictionnairy(word2 + ' , ' + word1, dictionnaire)
+        word2 = word1
+
+    return word1, word2
+
+
+
+def readFile(file, autor, dictionnaire):
     # ouvrir fichier
-    book = open(rep_aut + '\\' + str(args.a) + '\\' + file, 'r', encoding="utf8")
+    book = open(rep_aut + '\\' + autor + '\\' + file, 'r', encoding="utf8")
 
     # read each line
+    word_no_punc_2 = ""
+
     for line in book:
         # autre méthode pour enlever la ponctuation (qui marche pas rip)
         # replace non-alphanumeric char with a space, and then split
         # word_no_punc = (re.sub(PONC, " ", line).split())
         # word_no_punc = word_no_punc.lower()
-
-        # i sert à donner une première valeur à word_no_punc_2
-        word_no_punc_2 = ""
-        i = 0
 
         for word in line.split():
             # remove punctuation
@@ -171,32 +193,23 @@ def readFile(file):
                     # séparer les deux mots
                     # mettre le premier mot dans la liste
 
-                    # unigramme
-                    if len(word_no_punc) > 2 and args.m == 1:
-                        addInDictionnairy(word_no_punc)
-
-                    # bigramme
-                    if len(word_no_punc) > 2 and len(word_no_punc_2) > 2 and args.m == 2:
-                        addInDictionnairy(word_no_punc_2 + ' , ' + word_no_punc)
-                        word_no_punc_2 = word_no_punc
+                    # ajoute le mot (s'il y a lieu) en fonction du n
+                    word_no_punc, word_no_punc_2 = n_gramme_ajout_dict(word_no_punc, word_no_punc_2, dictionnaire)
 
                     # remettre une chaine vide pour le mot après le trait d'union
                     word_no_punc = ""
 
-            # unigramme
-            if len(word_no_punc) > 2 and args.m == 1:
-                # ne pas oublier de mettre les mots avant les traits d'union dans la liste!!!
-                addInDictionnairy(word_no_punc)
+            word_no_punc, word_no_punc_2 = n_gramme_ajout_dict(word_no_punc, word_no_punc_2, dictionnaire)
 
-            # bigramme
-            if i == 0 and len(word_no_punc) > 2:
-                # donne la première valeur de word_no_punc_2
-                word_no_punc_2 = word_no_punc
-                i = 1
 
-            elif len(word_no_punc) > 2 and len(word_no_punc_2) > 2 and args.m == 2:
-                addInDictionnairy(word_no_punc_2 + ' , ' + word_no_punc)
-                word_no_punc_2 = word_no_punc
+def dict_pourcentage(dictionary):
+    # 1- faire la somme de toutes les valeurs du dictionnaire
+    total_sum = sum(dictionary.values())
+    print(total_sum)
+
+    # 2- transformer les valeurs du dictionnaire en pourcentage
+    for element in dictionary:
+        dictionary[element] = dictionary[element] / total_sum
 
 
 # créer dictionnaire vide
@@ -204,54 +217,69 @@ dict = {}
 
 
 if str(args.a) in ['Balzac']:
-    readFile('HonoredeBalzac-Lacomédiehumaine-Volume1.txt')
-    readFile('HonoredeBalzac-Lacomédiehumaine-Volume2.txt')
-    readFile('HonoredeBalzac-Lacomédiehumaine-Volume3.txt')
-    readFile('HonoredeBalzac-Lacomédiehumaine-Volume4.txt')
-    readFile('HonoredeBalzac-Lacomédiehumaine-Volume9.txt')
+    readFile('HonoredeBalzac-Lacomédiehumaine-Volume1.txt', str(args.a), dict)
+    readFile('HonoredeBalzac-Lacomédiehumaine-Volume2.txt', str(args.a), dict)
+    readFile('HonoredeBalzac-Lacomédiehumaine-Volume3.txt', str(args.a), dict)
+    readFile('HonoredeBalzac-Lacomédiehumaine-Volume4.txt', str(args.a), dict)
+    readFile('HonoredeBalzac-Lacomédiehumaine-Volume9.txt', str(args.a), dict)
 
 elif str(args.a) in ['Hugo']:
-    readFile('Victor Hugo - Les misérables - Tome I.txt')
-    readFile('Victor Hugo - Les misérables - Tome II.txt')
-    readFile('Victor Hugo - Les misérables - Tome IV.txt')
-    readFile('Victor Hugo - Les misérables - Tome V.txt')
-    readFile('Victor Hugo - Lhomme qui rit.txt')
-    readFile('Victor Hugo - Notre-Dame de Paris.txt')
+    readFile('Victor Hugo - Les misérables - Tome I.txt', str(args.a), dict)
+    readFile('Victor Hugo - Les misérables - Tome II.txt', str(args.a), dict)
+    readFile('Victor Hugo - Les misérables - Tome IV.txt', str(args.a), dict)
+    readFile('Victor Hugo - Les misérables - Tome V.txt', str(args.a), dict)
+    readFile('Victor Hugo - Lhomme qui rit.txt', str(args.a), dict)
+    readFile('Victor Hugo - Notre-Dame de Paris.txt', str(args.a), dict)
 
 elif str(args.a) in ['Ségur']:
-    readFile('Comtesse de Ségur - François le Bossu.txt')
-    readFile('Comtesse de Ségur - Les deux nigauds.txt')
-    readFile('Comtesse de Ségur - Les malheurs de Sophie.txt')
-    readFile('Comtesse de Ségur - Les mémoires dun ane.txt')
-    readFile('Comtesse de Ségur - Un bon petit diable.txt')
+    readFile('Comtesse de Ségur - François le Bossu.txt', str(args.a), dict)
+    readFile('Comtesse de Ségur - Les deux nigauds.txt', str(args.a), dict)
+    readFile('Comtesse de Ségur - Les malheurs de Sophie.txt', str(args.a), dict)
+    readFile('Comtesse de Ségur - Les mémoires dun ane.txt', str(args.a), dict)
+    readFile('Comtesse de Ségur - Un bon petit diable.txt', str(args.a), dict)
 
 elif str(args.a) in ['Verne']:
-    readFile('Jules Verne - Autour de la lune.txt')
-    readFile('Jules Verne - De la terre a la lune.txt')
-    readFile('Jules Verne - Le tour du monde en quatre-vingts jours.txt')
-    readFile('Jules Verne - Les enfants du capitaine Grant.txt')
-    readFile('Jules Verne - Lile mystérieuse.txt')
-    readFile('Jules Verne - Robur-le-conquérant.txt')
-    readFile('Jules Verne - Vingt mille lieues sous les mers.txt')
-    readFile('Jules Verne - Voyage au centre de la terre.txt')
+    readFile('Jules Verne - Autour de la lune.txt', str(args.a), dict)
+    readFile('Jules Verne - De la terre a la lune.txt', str(args.a), dict)
+    readFile('Jules Verne - Le tour du monde en quatre-vingts jours.txt', str(args.a), dict)
+    readFile('Jules Verne - Les enfants du capitaine Grant.txt', str(args.a), dict)
+    readFile('Jules Verne - Lile mystérieuse.txt', str(args.a), dict)
+    readFile('Jules Verne - Robur-le-conquérant.txt', str(args.a), dict)
+    readFile('Jules Verne - Vingt mille lieues sous les mers.txt', str(args.a), dict)
+    readFile('Jules Verne - Voyage au centre de la terre.txt', str(args.a), dict)
 
 elif str(args.a) in ['Voltaire']:
-    readFile('Voltaire - Candide.txt')
-    readFile('Voltaire - Lingénu.txt')
-    readFile('Voltaire - Zadig ou la destinée.txt')
+    readFile('Voltaire - Candide.txt', str(args.a), dict)
+    readFile('Voltaire - Lingénu.txt', str(args.a), dict)
+    readFile('Voltaire - Zadig ou la destinée.txt', str(args.a), dict)
 
 elif str(args.a) in ['Zola']:
-    readFile('Emile Zola - Germinal.txt')
-    readFile('Emile Zola - La bête humaine.txt')
-    readFile('Emile Zola - La faute de labbée Mouret.txt')
-    readFile('Emile Zola - Lassomoir.txt')
-    readFile('Emile Zola - Nana.txt')
-
-
+    readFile('Emile Zola - Germinal.txt', str(args.a), dict)
+    readFile('Emile Zola - La bête humaine.txt', str(args.a), dict)
+    readFile('Emile Zola - La faute de labbée Mouret.txt', str(args.a), dict)
+    readFile('Emile Zola - Lassomoir.txt', str(args.a), dict)
+    readFile('Emile Zola - Nana.txt', str(args.a), dict)
 
 
 # sort dict
-dict = sorted(dict.items(), key=lambda x:x[1], reverse=1)
-#print(dict)
-first_values = list(dict)[:1000]
-print(first_values)
+list_sorted = sorted(dict.items(), key=lambda x:x[1], reverse=1)
+dict = collections.OrderedDict(list_sorted)
+#print_dictionnairy(dict)
+
+
+# Calcul de la proximité d’un autre texte
+# 1- transforner le dictionnaire pour que les valeurs soient en pourcentage
+dict_pourcentage(dict)
+#print_dictionnairy(dict)
+
+# 2- créer le dictionnaire inconnu
+dict_inconnu = {}
+readFile('Emile Zola - Germinal.txt', str(args.a), dict_inconnu)
+
+# 2- comparer les clés des dictionnaires et faire une moyenne de la ressemblanc des pourcentage
+for key in dict:
+    if key in dict_inconnu:
+        # comparer les pourcentages
+    else:
+        # jsais pas trop
+
