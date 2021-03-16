@@ -1,4 +1,3 @@
-#
 #  Gabarit pour l'application de traitement des fréquences de mots dans les oeuvres d'auteurs divers
 #  Le traitement des args à été inclus:
 #     Tous les args requis sont présents et accessibles dans args
@@ -47,20 +46,66 @@
 
 
 import argparse
-import glob
-import sys
 import os
 import re
 from math import sqrt
-from collections import OrderedDict
-from pathlib import Path
+from pythonds.graphs import Graph, Vertex
 from random import randint
 from random import choice
 
 # Ajouter ici les signes de ponctuation à retirer
-initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t', ' ']
+initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t', ' ', '\xa0']
 # initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '»', '«']
 PONC = '|'.join(['\\' + x for x in initialPonc])
+
+
+def ParseArgs():
+    parser = argparse.ArgumentParser(prog='markov_cip1_cip2.py')
+    parser.add_argument('-d', required=True, help='Repertoire contenant les sous-repertoires des auteurs')
+    parser.add_argument('-a', help='Auteur a traiter')
+    parser.add_argument('-A', action='store_true', help='Traiter tous les auteurs')
+    parser.add_argument('-f', help='Fichier inconnu a comparer')
+    parser.add_argument('-m', required=True, type=int, choices=range(1, 3),
+                        help='Mode (1, 2 ou 3) - unigrammes, bigrammes ou trigrammes')
+    parser.add_argument('-F', type=int, help='Indication du rang (en frequence) du mot (ou bigramme) a imprimer')
+    parser.add_argument('-G', type=int, help='Taille du texte a generer')
+    parser.add_argument('-g', help='Nom de base du fichier de texte a generer')
+    parser.add_argument('-v', action='store_true', help='Mode verbose')
+    parser.add_argument('-P', action='store_true', help='Retirer la ponctuation')
+    return parser.parse_args()
+
+
+def PrintVerbose(args, rep_aut, authors):
+    print("Mode verbose:")
+    print("Calcul avec les auteurs du repertoire: " + args.d)
+    if args.f:
+        print("Fichier inconnu a,"
+              " etudier: " + args.f)
+
+    print("Calcul avec des " + str(args.m) + "-grammes")
+    if args.F:
+        print(str(args.F) + "e mot (ou digramme) le plus frequent sera calcule")
+
+    if args.a:
+        print("Auteur etudie: " + args.a)
+
+    if args.P:
+        print("Ne pas retirer les signes de ponctuation suivants: {0}".format(" ".join(str(i) for i in PONC)))
+
+    if args.M:
+        print("Retirer les majuscules et considérer tous les mots comme minuscules")
+
+    if args.G:
+        print("Generation d'un texte de " + str(args.G) + " mots")
+
+    if args.g:
+        print("Nom de base du fichier de texte genere: " + args.g)
+
+    print("Repertoire des auteurs: " + rep_aut)
+    print("Liste des auteurs: ")
+    for a in authors:
+        aut = a.split("/")
+        print("    " + aut[-1])
 
 
 def GetPath(path: str) -> str:
@@ -77,16 +122,17 @@ def GetPath(path: str) -> str:
 
 
 def AddToDict(dictionary: {str: int},
-              newWord: str):
+              newWord: str, count: int = 1):
     """
         Add a string to an existing dictionary
     :param dictionary: Existing dictionary into which the new element should be inserted
     :param newWord:    Element to insert
+    :param count:      Value to add to dictionary at key newWord
     """
     if newWord in dictionary:
-        dictionary[newWord] += 1
+        dictionary[newWord] += count
     else:
-        dictionary[newWord] = 1
+        dictionary[newWord] = count
 
 
 def SortDict(dictionnary: {str: int}) -> list:
@@ -277,23 +323,82 @@ def FindProbableAuthor(path_text: str,
     return guess
 
 
+def CreateSubDict(authorWords: {str: [(str, int)]},
+                  author: str) -> {str: [(str, int)]}:
+    var = authorWords[author]
+    return {author: var}
+
+
+def CombineDict(authorWords: {str: [(str, int)]}) -> {str: int}:
+    dictionary = {}
+    for subdict in authorWords.items():
+        for word in subdict[1]:
+            AddToDict(dictionary, word[0], word[1])
+
+    return dictionary
+
+
+def FindnthWord(n: int,
+                authorWords: {str: [(str, int)]}) -> (str, int):
+    return authorWords.items()[1][n]
+
+
+def CreateGraph(wordList: [(str, int)]) -> Graph:
+    g = Graph()
+    for bigram in wordList:
+        word1, word2 = tuple(bigram[0].split())
+        g.addEdge(word1, word2, bigram[1])
+
+    return g
+
+
+def PrintGraph(g: Graph):
+    for vertex in g.vertices.values():
+        print(vertex.getId())
+        for edge in vertex.getConnections():
+            print("\t" + edge.getId() + ":\t" + str(vertex.getWeight(edge)))
+
+
+def GetRandomVertex(g: Graph) -> str:
+    rand = randint(0, len(g.getVertices()))
+    return g.getVertices()[rand]
+
+
+def GetNextVertex(g: Graph,
+                  v: str) -> str:
+    v = g.vertices[v]
+    total = sum([x[1] for x in v.connectedTo.items()])
+    if total == 0:
+        return GetRandomVertex(g)
+
+    rand = randint(0, total)
+    for edge in v.getConnections():
+        rand -= v.getWeight(edge)
+        if rand <= 0:
+            return edge.getId()
+
+
+def GenerateText(wordList: [(str, int)],
+                 numberWords: int,
+                 ngrams: int) -> str:
+    text = ""
+    g = CreateGraph(wordList)
+
+    vertex = GetRandomVertex(g)
+    text += vertex
+
+    for wordIndex in range(0, numberWords):
+        vertex = GetNextVertex(g, vertex)
+        text += " " + vertex
+
+    return text
+
+
 # Main: lecture des paramètres et appel des méthodes appropriées
 #       argparse permet de lire les paramètres sur la ligne de commande
-#       Certains paramàtres sont obligatoires ("required=True")
-#       Ces paramètres doivent êtres fournis à python lorsque l'application est exécutée
 def main():
-    parser = argparse.ArgumentParser(prog='markov_cip1_cip2.py')
-    parser.add_argument('-d', required=True, help='Repertoire contenant les sous-repertoires des auteurs')
-    parser.add_argument('-a', help='Auteur a traiter')
-    parser.add_argument('-f', help='Fichier inconnu a comparer')
-    parser.add_argument('-m', required=True, type=int, choices=range(1, 3),
-                        help='Mode (1, 2 ou 3) - unigrammes, bigrammes ou trigrammes')
-    parser.add_argument('-F', type=int, help='Indication du rang (en frequence) du mot (ou bigramme) a imprimer')
-    parser.add_argument('-G', type=int, help='Taille du texte a generer')
-    parser.add_argument('-g', help='Nom de base du fichier de texte a generer')
-    parser.add_argument('-v', action='store_true', help='Mode verbose')
-    parser.add_argument('-P', action='store_true', help='Retirer la ponctuation')
-    args = parser.parse_args()
+    args = ParseArgs()
+
     # Lecture du répertoire des auteurs, obtenir la liste des auteurs
     # Note:  args.d est obligatoire
     # auteurs devrait comprendre la liste des répertoires d'auteurs, peu importe le système d'exploitation
@@ -302,38 +407,14 @@ def main():
 
     # Si mode verbose, refléter les valeurs des paramètres passés sur la ligne de commande
     if args.v:
-        print("Mode verbose:")
-        print("Calcul avec les auteurs du repertoire: " + args.d)
-        if args.f:
-            print("Fichier inconnu a,"
-                  " etudier: " + args.f)
-
-        print("Calcul avec des " + str(args.m) + "-grammes")
-        if args.F:
-            print(str(args.F) + "e mot (ou digramme) le plus frequent sera calcule")
-
-        if args.a:
-            print("Auteur etudie: " + args.a)
-
-        if args.P:
-            print("Retirer les signes de ponctuation suivants: {0}".format(" ".join(str(i) for i in PONC)))
-
-        if args.M:
-            print("Retirer les majuscules et considérer tous les mots comme minuscules")
-
-        if args.G:
-            print("Generation d'un texte de " + str(args.G) + " mots")
-
-        if args.g:
-            print("Nom de base du fichier de texte genere: " + args.g)
-
-        print("Repertoire des auteurs: " + rep_aut)
-        print("Liste des auteurs: ")
-        for a in authors:
-            aut = a.split("/")
-            print("    " + aut[-1])
+        PrintVerbose(args, rep_aut, authors)
 
     # À partir d'ici, vous devriez inclure les appels à votre code
+
+    # Check inputs:
+    if args.a and args.A:
+        print("Args -a {0} and -A have both been provided, -a input will be ignored".format(args.a))
+        args.a = None
 
     # List all the words of the different authors
     authorWords: {str: [(str, int)]} = {}
@@ -341,10 +422,40 @@ def main():
         authorWords[a] = ReadAuthor(rep_aut, a, not args.P, args.m)
         # print(a + ": " + str(authorWords[a][:3]))
 
+    # Find the nth word for a specified author
+    if args.F:
+        if args.A:
+            n = FindnthWord(args.F, CombineDict(authorWords))
+            print(n)
+
+        elif args.a:
+            n = FindnthWord(args.F, CreateSubDict(authorWords, args.a))
+            print(n)
+
+        else:
+            print("Author wasn't specified, try again")
+
     # Find the most probable author for a certain text
     if args.f:
-        guess = FindProbableAuthor(args.f, authorWords, not args.P, args.m)
-        print(guess)
+        if args.A:
+            guess = FindProbableAuthor(args.f, authorWords, not args.P, args.m)
+            print(guess)
+
+        elif args.a:
+            guess = FindProbableAuthor(args.f, CreateSubDict(authorWords, args.a), not args.P, args.m)
+            print(guess)
+
+        else:
+            print("Author wasn't specified, try again")
+
+    if args.G:
+        text = ""
+        if args.A:
+            text = GenerateText([(x[0], x[1]) for x in list(CombineDict(authorWords).items())], args.G, args.m)
+        elif args.a:
+            text = GenerateText(authorWords[str(args.a)][:], args.G, args.m)
+
+        print(text)
 
 
 if __name__ == "__main__":
