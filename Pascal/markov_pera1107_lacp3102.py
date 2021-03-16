@@ -450,10 +450,11 @@ def main():
 
     if args.G:
         text = ""
-        if args.A:
-            text = GenerateText([(x[0], x[1]) for x in list(CombineDict(authorWords).items())], args.G, args.m)
-        elif args.a:
-            text = GenerateText(authorWords[str(args.a)][:], args.G, args.m)
+        if args.m == 2:
+            if args.A:
+                text = GenerateText([(x[0], x[1]) for x in list(CombineDict(authorWords).items())], args.G, args.m)
+            elif args.a:
+                text = GenerateText(authorWords[str(args.a)][:], args.G, args.m)
 
         print(text)
 
