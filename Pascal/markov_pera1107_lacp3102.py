@@ -1,11 +1,5 @@
-#  Gabarit pour l'application de traitement des fréquences de mots dans les oeuvres d'auteurs divers
-#  Le traitement des args à été inclus:
-#     Tous les args requis sont présents et accessibles dans args
-#     Le traitement du mode verbose vous donne un exemple de l'utilisation des args
-#
-#  Frederic Mailhot, 26 février 2018
-#    Revisé 16 avril 2018
-#    Revisé 7 janvier 2020
+# Pascal-Emmanuel Lachance
+# 2021/03/09
 
 #  Paramêtres utilisés, leur fonction et code a générer
 #
@@ -44,21 +38,23 @@
 #  avec ou sans -P:  indique que les calculs doivent être faits avec ou sans ponctuation
 #  avec -v:  mode verbose, imprimera l'ensemble des valeurs des paramètres (fait déjà partie du gabarit)
 
-
+# ---------------------------------------------------------------------------------------------------------------------
+# Imports
 import argparse
 import os
 import re
 from math import sqrt
 from pythonds.graphs import Graph, Vertex
-from random import randint
-from random import choice
+from random import randint, choices
 
-# Ajouter ici les signes de ponctuation à retirer
+# ---------------------------------------------------------------------------------------------------------------------
+# Ponctuation à retirer
 initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '«', '»', '\n', '\t', ' ', '\xa0']
-# initialPonc = ['!', '"', '\'', ')', '(', ',', '.', ';', ':', '?', '-', '_', '»', '«']
 PONC = '|'.join(['\\' + x for x in initialPonc])
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Functions definitions
 def ParseArgs():
     parser = argparse.ArgumentParser(prog='markov_cip1_cip2.py')
     parser.add_argument('-d', required=True, help='Repertoire contenant les sous-repertoires des auteurs')
@@ -243,7 +239,7 @@ def BuildPercentList_Generator(words: [(str, int)],
 
 
 def BuildPercentList(authorWords: {str: [(str, int)]},
-                     maxWords: int = 300) -> {str: [(str, int)]}:
+                     maxWords: int = -1) -> {str: [(str, int)]}:
     """
         Takes all the authors and calculate the percentage chance that a specific word appears in their works.
     :param authorWords: Dictionary, using the author's name as key, and containing a list of words with their occurence
@@ -283,8 +279,9 @@ def CalculateProximity(authorPercent: [(str, int)],
     val = 0.0
     authorPercent = dict(authorPercent)
     otherPercent = dict(otherPercent)
-    for a, t in [(authorWord[1], otherPercent[authorWord[0]]) for authorWord in authorPercent.items() if authorWord[0] in otherPercent]:
-        val += (a - t)**2
+    for a, t in [(authorWord[1], otherPercent[authorWord[0]]) for authorWord in authorPercent.items() if
+                 authorWord[0] in otherPercent]:
+        val += (a - t) ** 2
 
     return sqrt(val)
 
@@ -303,8 +300,8 @@ def FindProbableAuthor(path_text: str,
     """
 
     percentList: {str: [(str, int)]} = BuildPercentList(authorWords)
-    for author in percentList.items():
-        print(author[0] + ": " + str([x[0] + ": {:0.1f}%".format(x[1]) for x in author[1][:5]]))
+    # for author in percentList.items():
+    #    print(author[0] + ": " + str([x[0] + ": {:0.1f}%".format(x[1]) for x in author[1][:5]]))
 
     otherbook = {}
     ReadBook(GetPath(path_text), otherbook, remove_ponc, ngrams)
@@ -314,22 +311,35 @@ def FindProbableAuthor(path_text: str,
     for word in BuildPercentList_Generator(otherbook, totalWords):
         otherPercent.append(word)
 
-    print("Other book: " + str([x[0] + ": {:0.1f}%".format(x[1]) for x in otherPercent[:5]]))
+    # print("Other book: " + str([x[0] + ": {:0.1f}%".format(x[1]) for x in otherPercent[:5]]))
 
     proximityList = [(a[0], CalculateProximity(a[1], otherPercent)) for a in percentList.items()]
     # print(proximityList)
 
-    guess = max(proximityList, key=lambda x: x[1])
+    guess = min(proximityList, key=lambda x: x[1])
     return guess
 
 
 def CreateSubDict(authorWords: {str: [(str, int)]},
                   author: str) -> {str: [(str, int)]}:
+    """
+        Takes a dictionary whose keys are the author's names and values are tuples of a word and its occurence count,
+        and returns a dictionnary with a single key-value-pair of the specified author with its associated list of words
+    :param authorWords: Original dictionnary
+    :param author:      Author to keep
+    :return:            Smaller dictionnary with only a single author's data
+    """
     var = authorWords[author]
     return {author: var}
 
 
 def CombineDict(authorWords: {str: [(str, int)]}) -> {str: int}:
+    """
+        Combine the words of all authors in a dictionnary into a single dictionary whose keys are words and values are
+        combines occurences in all the author's texts.
+    :param authorWords: Original dictionary to combine
+    :return:            Dictionnary containing all the words from the original combined dictionnary
+    """
     dictionary = {}
     for subdict in authorWords.items():
         for word in subdict[1]:
@@ -340,10 +350,35 @@ def CombineDict(authorWords: {str: [(str, int)]}) -> {str: int}:
 
 def FindnthWord(n: int,
                 authorWords: {str: [(str, int)]}) -> (str, int):
-    return authorWords.items()[1][n]
+    """
+        Find the n-th word of a specific author's works.
+        If n is over the number of grams in the list, the last word is returned instead
+    :note   The initial input dictionary must contain a single author (this algorithm only checks the first author in
+            the dictionary)
+
+    :param n:           n-th word number
+    :param authorWords: Dictionnary containing a single author and tuples of the specific word and their occurence count
+    :return:            Tuple containing the n-th word and its occurence count.
+    """
+    var = list(authorWords.values())[0]
+
+    if n >= len(var):
+        return var[-1]
+    else:
+        return var[n - 1]
 
 
 def CreateGraph(wordList: [(str, int)]) -> Graph:
+    """
+        Create a Markov Chain using graphs from library PythonDS.
+        Each bigram is split into two words, inserted into vertices, and an edge is made between the two vertices.
+        The weight of each edge is the number of occurences of said bigram.
+        The connections and unidirectional.
+        Repeating words are put into the same vertices, akin to a dictionary insertion (the Graph library is a dict
+                                                                                        within a dict).
+    :param wordList: List of tuples of bigrams and occurence count.
+    :return:         A graph representing the Markov chain to generate words.
+    """
     g = Graph()
     for bigram in wordList:
         word1, word2 = tuple(bigram[0].split())
@@ -353,6 +388,10 @@ def CreateGraph(wordList: [(str, int)]) -> Graph:
 
 
 def PrintGraph(g: Graph):
+    """
+        Debugging function, displaying a graph and its edges
+    :param g:  Input graph
+    """
     for vertex in g.vertices.values():
         print(vertex.getId())
         for edge in vertex.getConnections():
@@ -360,12 +399,24 @@ def PrintGraph(g: Graph):
 
 
 def GetRandomVertex(g: Graph) -> str:
+    """
+        Get a random vertex from a graph.
+    :param g: Input graph
+    :return:  Random word from the graph
+    """
     rand = randint(0, len(g.getVertices()))
     return g.getVertices()[rand]
 
 
 def GetNextVertex(g: Graph,
                   v: str) -> str:
+    """
+        Get a random vertex connected to an input vertex.
+        If the input vertex has no output connections, a random vertex is chosen, using the `GetRandomVertex` function.
+    :param g: Input graph
+    :param v: Input vertex
+    :return:  Output vertex
+    """
     v = g.vertices[v]
     total = sum([x[1] for x in v.connectedTo.items()])
     if total == 0:
@@ -381,34 +432,45 @@ def GetNextVertex(g: Graph,
 def GenerateText(wordList: [(str, int)],
                  numberWords: int,
                  ngrams: int) -> str:
+    """
+        Generate a text using either a Markov chain (for bigrams) or a weighted chance (for unigrams).
+    :param wordList:    Input list of tuples of words and their occurence count
+    :param numberWords: Number of words to generate
+    :param ngrams:      Mode (unigrams or bigrams)
+    :return:            Generated text string
+    """
     text = ""
-    g = CreateGraph(wordList)
 
-    vertex = GetRandomVertex(g)
-    text += vertex
+    if ngrams == 1:
+        for wordIndex in range(0, numberWords):
+            text += "{0} ".format(choices([x[0] for x in wordList], weights=[x[1] for x in wordList], k=1)[0])
 
-    for wordIndex in range(0, numberWords):
-        vertex = GetNextVertex(g, vertex)
-        text += " " + vertex
+    elif ngrams == 2:
+        g = CreateGraph(wordList)
+
+        vertex = GetRandomVertex(g)
+        text += vertex
+
+        for wordIndex in range(0, numberWords):
+            vertex = GetNextVertex(g, vertex)
+            text += " " + vertex
 
     return text
 
 
+# ---------------------------------------------------------------------------------------------------------------------
 # Main: lecture des paramètres et appel des méthodes appropriées
 #       argparse permet de lire les paramètres sur la ligne de commande
 def main():
     args = ParseArgs()
-
-    # Lecture du répertoire des auteurs, obtenir la liste des auteurs
-    # Note:  args.d est obligatoire
-    # auteurs devrait comprendre la liste des répertoires d'auteurs, peu importe le système d'exploitation
     rep_aut = GetPath(args.d)
-    authors = os.listdir(rep_aut)
+    authors = [x.lower() for x in os.listdir(rep_aut)]
 
     # Si mode verbose, refléter les valeurs des paramètres passés sur la ligne de commande
     if args.v:
         PrintVerbose(args, rep_aut, authors)
 
+    # ------------------------------------------------------------
     # À partir d'ici, vous devriez inclure les appels à votre code
 
     # Check inputs:
@@ -422,41 +484,46 @@ def main():
         authorWords[a] = ReadAuthor(rep_aut, a, not args.P, args.m)
         # print(a + ": " + str(authorWords[a][:3]))
 
-    # Find the nth word for a specified author
-    if args.F:
-        if args.A:
-            n = FindnthWord(args.F, CombineDict(authorWords))
-            print(n)
-
-        elif args.a:
-            n = FindnthWord(args.F, CreateSubDict(authorWords, args.a))
-            print(n)
-
-        else:
-            print("Author wasn't specified, try again")
-
     # Find the most probable author for a certain text
     if args.f:
         if args.A:
             guess = FindProbableAuthor(args.f, authorWords, not args.P, args.m)
-            print(guess)
+            print("{} {:0.1f}".format(guess[0], guess[1]))
 
         elif args.a:
             guess = FindProbableAuthor(args.f, CreateSubDict(authorWords, args.a), not args.P, args.m)
-            print(guess)
+            print("{} {:0.1f}".format(guess[0], guess[1]))
 
         else:
             print("Author wasn't specified, try again")
 
+    # Find the nth word for a specified author
+    if args.F:
+        if args.A:
+            n = FindnthWord(args.F, CombineDict(authorWords))
+            print(n[0] + " " + str(n[1]))
+
+        elif args.a:
+            n = FindnthWord(args.F, CreateSubDict(authorWords, args.a))
+            print(n[0] + " " + str(n[1]))
+
+        else:
+            print("Author wasn't specified, try again")
+
+    # Generate a text
     if args.G:
         text = ""
-        if args.m == 2:
-            if args.A:
-                text = GenerateText([(x[0], x[1]) for x in list(CombineDict(authorWords).items())], args.G, args.m)
-            elif args.a:
-                text = GenerateText(authorWords[str(args.a)][:], args.G, args.m)
+        if args.A:
+            for a in authors:
+                text = GenerateText(authorWords[a][:], args.G, args.m)
+                print(a + " :: Début: " + text + " :: Fin")
 
-        print(text)
+        elif args.a:
+            text = GenerateText(authorWords[str(args.a)][:], args.G, args.m)
+            print(args.a + " :: Début: " + text + " :: Fin")
+
+        else:
+            print("Author wasn't specified, try again")
 
 
 if __name__ == "__main__":
