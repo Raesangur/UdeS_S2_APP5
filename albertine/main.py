@@ -49,6 +49,12 @@
 import argparse
 import collections
 import os
+import random
+import math
+import random as rm
+from pythonds.graphs import Graph, Vertex
+from random import choice
+
 
 ### Ajouter ici les signes de ponctuation à retirer
 PONC = ["!", '"', "'", ")", "(", ",", ".", ";", ":", "?", "-", "_", "»", "«"]
@@ -73,6 +79,7 @@ if __name__ == "__main__":
     parser.add_argument('-g', help='Nom de base du fichier de texte a generer')
     parser.add_argument('-v', action='store_true', help='Mode verbose')
     parser.add_argument('-P', action='store_true', help='Retirer la ponctuation')
+    parser.add_argument('-A', action='store_true', help='Analyser tout les auteurs')
     args = parser.parse_args()
 
     ### Lecture du répertoire des auteurs, obtenir la liste des auteurs
@@ -164,7 +171,7 @@ def n_gramme_ajout_dict(word1, word2, dictionnaire):
         word2 = word1
 
     elif len(word1) > 2 and len(word2) > 2 and args.m == 2:
-        addInDictionnairy(word2 + ' , ' + word1, dictionnaire)
+        addInDictionnairy(word2 + ' ' + word1, dictionnaire)
         word2 = word1
 
     return word1, word2
@@ -210,7 +217,7 @@ def readFile(file, autor, dictionnaire):
             word_no_punc, word_no_punc_2 = n_gramme_ajout_dict(word_no_punc, word_no_punc_2, dictionnaire)
 
 
-def dict_pourcentage(dictionary, considered_values):
+def dict_percentage(dictionary, considered_values):
     # 1- calculer la somme de toutes les valeurs du dictionnaire
     # faire la somme des 300 premières valeurs
     total_sum = 0
@@ -224,7 +231,6 @@ def dict_pourcentage(dictionary, considered_values):
 
     print(total_sum)
 
-
     # 2- transformer les valeurs du dictionnaire en pourcentage
     # transformer seulement les 300 premières valeurs
     iteration = 0
@@ -232,31 +238,64 @@ def dict_pourcentage(dictionary, considered_values):
         dictionary[element] = dictionary[element] / total_sum
 
         iteration = iteration +1
-        if iteration >= considered_values:
+        if iteration >= considered_values+10:
             break
 
 
 def compare_dictionary(dict_autor, considered_values):
     # comparer les 300 premiers éléments
-    somme_pourcentage = 0
+    somme = 0
     iteration = 0
     for key in dict_autor:
         if key in dict_inconnu:
-            # on divise la plus petite valeur par la plus grande et on fait *100 pour l'avoir en pourcentage
-            if dict_autor[key] <= dict_inconnu[key]:
-                somme_pourcentage = somme_pourcentage + (dict_autor[key] / dict_inconnu[key]) *100
-
-            else:
-                somme_pourcentage = somme_pourcentage + (dict_inconnu[key] / dict_autor[key]) *100
-            iteration = iteration +1
+            # on fait la formule donnée dans le guide
+            somme = somme + pow(dict_autor[key] - dict_inconnu[key], 2)
+            iteration = iteration + 1
 
         else:
-            iteration = iteration +1
+            somme = somme + pow(dict_autor[key], 2)
+            iteration = iteration + 1
 
         if iteration >= considered_values:
             break
 
-    return somme_pourcentage / len(dict_autor)
+    return math.sqrt(somme)
+
+# def dict_percentage(dictionary):
+#     # 1- calculer la somme de toutes les valeurs du dictionnaire
+#     total_sum = 0
+#     for element in dictionary:
+#         total_sum = total_sum + dictionary[element]
+#
+#     print(total_sum)
+#
+#     # 2- transformer les valeurs du dictionnaire en pourcentage
+#     for element in dictionary:
+#         dictionary[element] = dictionary[element] / total_sum
+#
+#
+# def compare_dictionary(dict_autor):
+#     somme_pourcentage = 0
+#     for key in dict_autor:
+#         if key in dict_inconnu:
+#             # on divise la plus petite valeur par la plus grande et on fait *100 pour l'avoir en pourcentage
+#             if dict_autor[key] <= dict_inconnu[key]:
+#                 somme_pourcentage = somme_pourcentage + (dict_autor[key] / dict_inconnu[key]) *100
+#
+#             else:
+#                 somme_pourcentage = somme_pourcentage + (dict_inconnu[key] / dict_autor[key]) *100
+#
+#     return somme_pourcentage / len(dict_autor)
+
+def create_graph(dictionary):
+    graph = Graph()
+
+    for key in dictionary:
+        word1, word2 = key.split()
+        graph.addEdge(word1, word2, dictionary[key])
+
+    return graph
+
 
 
 
@@ -271,47 +310,43 @@ dict_Verne = {}
 dict_Voltaire = {}
 dict_Zola = {}
 
+print("reading files...")
 
-readFile('HonoredeBalzac-Lacomédiehumaine-Volume1.txt', "Balzac", dict_Balzac)
-readFile('HonoredeBalzac-Lacomédiehumaine-Volume2.txt', "Balzac", dict_Balzac)
-readFile('HonoredeBalzac-Lacomédiehumaine-Volume3.txt', "Balzac", dict_Balzac)
-readFile('HonoredeBalzac-Lacomédiehumaine-Volume4.txt', "Balzac", dict_Balzac)
-readFile('HonoredeBalzac-Lacomédiehumaine-Volume9.txt', "Balzac", dict_Balzac)
+entries_autor = os.listdir(rep_aut)
+for entry in entries_autor:
+    if entry == "Balzac" and (args.A or args.a == "Balzac"):
+        entries = os.listdir(rep_aut + "\\" + "Balzac")
+        for file in entries:
+            readFile(file, "Balzac", dict_Balzac)
 
-readFile('Victor Hugo - Les misérables - Tome I.txt', "Hugo", dict_Hugo)
-readFile('Victor Hugo - Les misérables - Tome II.txt', "Hugo", dict_Hugo)
-readFile('Victor Hugo - Les misérables - Tome IV.txt', "Hugo", dict_Hugo)
-readFile('Victor Hugo - Les misérables - Tome V.txt', "Hugo", dict_Hugo)
-readFile('Victor Hugo - Lhomme qui rit.txt', "Hugo", dict_Hugo)
-readFile('Victor Hugo - Notre-Dame de Paris.txt', "Hugo", dict_Hugo)
+    if entry == "Hugo" and (args.A or args.a == "Hugo"):
+        entries = os.listdir(rep_aut + "\\" + "Hugo")
+        for file in entries:
+            readFile(file, "Hugo", dict_Hugo)
 
-readFile('Comtesse de Ségur - François le Bossu.txt', "Ségur", dict_Segur)
-readFile('Comtesse de Ségur - Les deux nigauds.txt', "Ségur", dict_Segur)
-readFile('Comtesse de Ségur - Les malheurs de Sophie.txt', "Ségur", dict_Segur)
-readFile('Comtesse de Ségur - Les mémoires dun ane.txt', "Ségur", dict_Segur)
-readFile('Comtesse de Ségur - Un bon petit diable.txt', "Ségur", dict_Segur)
+    if entry == "Ségur" and (args.A or args.a == "Ségur"):
+        entries = os.listdir(rep_aut + "\\" + "Ségur")
+        for file in entries:
+            readFile(file, "Ségur", dict_Segur)
 
-readFile('Jules Verne - Autour de la lune.txt', "Verne", dict_Verne)
-readFile('Jules Verne - De la terre a la lune.txt', "Verne", dict_Verne)
-readFile('Jules Verne - Le tour du monde en quatre-vingts jours.txt', "Verne", dict_Verne)
-readFile('Jules Verne - Les enfants du capitaine Grant.txt', "Verne", dict_Verne)
-readFile('Jules Verne - Lile mystérieuse.txt', "Verne", dict_Verne)
-readFile('Jules Verne - Robur-le-conquérant.txt', "Verne", dict_Verne)
-readFile('Jules Verne - Vingt mille lieues sous les mers.txt', "Verne", dict_Verne)
-readFile('Jules Verne - Voyage au centre de la terre.txt', "Verne", dict_Verne)
+    if entry == "Verne" and (args.A or args.a == "Verne"):
+        entries = os.listdir(rep_aut + "\\" + "Verne")
+        for file in entries:
+            readFile(file, "Verne", dict_Verne)
 
-readFile('Voltaire - Candide.txt', "Voltaire", dict_Voltaire)
-readFile('Voltaire - Lingénu.txt', "Voltaire", dict_Voltaire)
-readFile('Voltaire - Zadig ou la destinée.txt', "Voltaire", dict_Voltaire)
+    if entry == "Voltaire" and (args.A or args.a == "Voltaire"):
+        entries = os.listdir(rep_aut + "\\" + "Voltaire")
+        for file in entries:
+            readFile(file, "Voltaire", dict_Voltaire)
 
-readFile('Emile Zola - Germinal.txt', "Zola", dict_Zola)
-readFile('Emile Zola - La bête humaine.txt', "Zola", dict_Zola)
-readFile('Emile Zola - La faute de labbée Mouret.txt', "Zola", dict_Zola)
-readFile('Emile Zola - Lassomoir.txt', "Zola", dict_Zola)
-readFile('Emile Zola - Nana.txt', "Zola", dict_Zola)
+    if entry == "Zola" and (args.A or args.a == "Zola"):
+        entries = os.listdir(rep_aut + "\\" + "Zola")
+        for file in entries:
+            readFile(file, "Zola", dict_Zola)
 
 
 # sort dict
+print("sorting...")
 list_sorted_Balzac = sorted(dict_Balzac.items(), key=lambda x:x[1], reverse=1)
 list_sorted_Hugo = sorted(dict_Hugo.items(), key=lambda x:x[1], reverse=1)
 list_sorted_Segur = sorted(dict_Segur.items(), key=lambda x:x[1], reverse=1)
@@ -327,54 +362,114 @@ dict_Voltaire = collections.OrderedDict(list_sorted_Voltaire)
 dict_Zola = collections.OrderedDict(list_sorted_Zola)
 
 
-# Calcul de la proximité d’un autre texte
+# MARKOV CHAIN
+if (args.m == 2):
+    print("Creating Markov chain")
+
+    # 1- créer un graph
+    graph = Graph()
+    graph = create_graph(dict_Zola)
+
+    # 2- choisir aléatoirement le premier mot
+    first_node = random.choice(list(graph.vertices.items()))
+
+if (args.m == 1):
+    first_node = random.choice())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# CALCUL DE LA PROXIMITÉ DE DEUX TEXTES
 # 1- lire le texte inconnu
 dict_inconnu = {}
+readFile(args.f, 'TextesInconnusPourAutoValidation', dict_inconnu)
 
-if str(args.a) == "Balzac":
-    readFile('Balzac_généré.txt', str(args.a), dict_inconnu)
-
-elif str(args.a) == "Hugo":
-    readFile('Hugo_généré.txt', str(args.a), dict_inconnu)
-
-elif str(args.a) == "Ségur":
-    readFile('Ségur_généré.txt', str(args.a), dict_inconnu)
-
-elif str(args.a) == "Verne":
-    readFile('Verne_généré.txt', str(args.a), dict_inconnu)
-
-elif str(args.a) == "Voltaire":
-    readFile('Voltaire_généré.txt', str(args.a), dict_inconnu)
-
-elif str(args.a) == "Zola":
-    readFile('Zola_généré.txt', str(args.a), dict_inconnu)
 
 # sort dict inconnu
 list_sorted_inconnu = sorted(dict_inconnu.items(), key=lambda x:x[1], reverse=1)
 dict_inconnu = collections.OrderedDict(list_sorted_inconnu)
 
 
-# 2- transforner les dictionnaires pour que les valeurs soient en pourcentage
+# 2- transformer les dictionnaires pour que les valeurs soient en pourcentage
 considered_values = 300
 
-dict_pourcentage(dict_Balzac, considered_values)
-dict_pourcentage(dict_Hugo, considered_values)
-dict_pourcentage(dict_Segur, considered_values)
-dict_pourcentage(dict_Verne, considered_values)
-dict_pourcentage(dict_Voltaire, considered_values)
-dict_pourcentage(dict_Zola, considered_values)
-dict_pourcentage(dict_inconnu, 10000)
+dict_percentage(dict_Balzac, considered_values)
+dict_percentage(dict_Hugo, considered_values)
+dict_percentage(dict_Segur, considered_values)
+dict_percentage(dict_Verne, considered_values)
+dict_percentage(dict_Voltaire, considered_values)
+dict_percentage(dict_Zola, considered_values)
+dict_percentage(dict_inconnu, 99999999)
 
-print_dictionnairy(dict_Balzac, considered_values)
+print_dictionnairy(dict_Zola, considered_values)
 print_dictionnairy(dict_inconnu, 0)
 
 # 3- comparer les clés des dictionnaires et faire une moyenne de la ressemblance des pourcentages
-proximite_Balzac = compare_dictionary(dict_Balzac,considered_values)
-proximite_Hugo = compare_dictionary(dict_Hugo, considered_values)
-proximite_Segur = compare_dictionary(dict_Segur, considered_values)
-proximite_Verne = compare_dictionary(dict_Verne, considered_values)
-proximite_Voltaire = compare_dictionary(dict_Voltaire, considered_values)
-proximite_Zola = compare_dictionary(dict_Zola, considered_values)
+# et imprimer la réponse
+if args.A or args.a == "Balzac":
+    proximite_Balzac = compare_dictionary(dict_Balzac, considered_values)
+    print("Balzac : " + str(proximite_Balzac))
 
-print("Balzac : " + str(proximite_Balzac) + " Hugo : " + str(proximite_Hugo) + " Segur : " + str(proximite_Segur) + " Verne : " + str(proximite_Verne) +
-      " Voltaire : " + str(proximite_Voltaire) + " Zola : " + str(proximite_Zola))
+if args.A or args.a == "Hugo":
+    proximite_Hugo = compare_dictionary(dict_Hugo, considered_values)
+    print("Hugo : " + str(proximite_Hugo))
+
+if args.A or args.a == "Ségur":
+    proximite_Segur = compare_dictionary(dict_Segur, considered_values)
+    print("Segur : " + str(proximite_Segur))
+
+if args.A or args.a == "Verne":
+    proximite_Verne = compare_dictionary(dict_Verne, considered_values)
+    print("Verne : " + str(proximite_Verne))
+
+if args.A or args.a == "Voltaire":
+    proximite_Voltaire = compare_dictionary(dict_Voltaire, considered_values)
+    print("Voltaire : " + str(proximite_Voltaire))
+
+if args.A or args.a == "Zola":
+    proximite_Zola = compare_dictionary(dict_Zola, considered_values)
+    print("Zola : " + str(proximite_Zola))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
