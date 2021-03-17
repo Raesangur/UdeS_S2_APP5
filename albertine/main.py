@@ -52,6 +52,8 @@ import os
 import random
 import math
 import random as rm
+
+import numpy as np
 from pythonds.graphs import Graph, Vertex
 from random import choice
 
@@ -229,7 +231,7 @@ def dict_percentage(dictionary, considered_values):
         if iteration >= considered_values:
             break
 
-    print(total_sum)
+    #print(total_sum)
 
     # 2- transformer les valeurs du dictionnaire en pourcentage
     # transformer seulement les 300 premières valeurs
@@ -297,6 +299,40 @@ def create_graph(dictionary):
     return graph
 
 
+def markov_chain(dictionary):
+    liste_generee = []
+    if (args.m == 1):
+        # transform dict into list
+        dict_list = []
+        for key, value in dictionary.items():
+            tuple_value = [key, value]
+            dict_list.append(tuple_value)
+
+        # 2- choisir aléatoirement le premier mot
+        first_node = np.random.choice(dict_list[0])
+        print(str(first_node))
+
+        # creer le texte
+        liste_generee.append(first_node)
+
+        for i in range(args.G):
+            next_node = np.random.choice(dict_list[0], p = dict_list[1])
+            liste_generee.append(next_node)
+
+
+    if (args.m == 2):
+        print("Creating Markov chain")
+
+        # 1- créer un graph
+        graph = Graph()
+        graph = create_graph(dict_Zola)
+
+        # 2- choisir aléatoirement le premier mot
+        first_node = random.choice(list(graph.vertices.items()))
+
+    return liste_generee
+
+
 
 
 
@@ -362,36 +398,6 @@ dict_Voltaire = collections.OrderedDict(list_sorted_Voltaire)
 dict_Zola = collections.OrderedDict(list_sorted_Zola)
 
 
-# MARKOV CHAIN
-if (args.m == 2):
-    print("Creating Markov chain")
-
-    # 1- créer un graph
-    graph = Graph()
-    graph = create_graph(dict_Zola)
-
-    # 2- choisir aléatoirement le premier mot
-    first_node = random.choice(list(graph.vertices.items()))
-
-if (args.m == 1):
-    first_node = random.choice())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # CALCUL DE LA PROXIMITÉ DE DEUX TEXTES
 # 1- lire le texte inconnu
 dict_inconnu = {}
@@ -404,7 +410,7 @@ dict_inconnu = collections.OrderedDict(list_sorted_inconnu)
 
 
 # 2- transformer les dictionnaires pour que les valeurs soient en pourcentage
-considered_values = 300
+considered_values = 99999999
 
 dict_percentage(dict_Balzac, considered_values)
 dict_percentage(dict_Hugo, considered_values)
@@ -414,36 +420,41 @@ dict_percentage(dict_Voltaire, considered_values)
 dict_percentage(dict_Zola, considered_values)
 dict_percentage(dict_inconnu, 99999999)
 
-print_dictionnairy(dict_Zola, considered_values)
-print_dictionnairy(dict_inconnu, 0)
+#print_dictionnairy(dict_Zola, considered_values)
+#print_dictionnairy(dict_inconnu, 0)
 
 # 3- comparer les clés des dictionnaires et faire une moyenne de la ressemblance des pourcentages
 # et imprimer la réponse
-if args.A or args.a == "Balzac":
-    proximite_Balzac = compare_dictionary(dict_Balzac, considered_values)
-    print("Balzac : " + str(proximite_Balzac))
+# if args.A or args.a == "Balzac":
+#     proximite_Balzac = compare_dictionary(dict_Balzac, considered_values)
+#     print("Balzac : " + str(proximite_Balzac))
+#
+# if args.A or args.a == "Hugo":
+#     proximite_Hugo = compare_dictionary(dict_Hugo, considered_values)
+#     print("Hugo : " + str(proximite_Hugo))
+#
+# if args.A or args.a == "Ségur":
+#     proximite_Segur = compare_dictionary(dict_Segur, considered_values)
+#     print("Segur : " + str(proximite_Segur))
+#
+# if args.A or args.a == "Verne":
+#     proximite_Verne = compare_dictionary(dict_Verne, considered_values)
+#     print("Verne : " + str(proximite_Verne))
+#
+# if args.A or args.a == "Voltaire":
+#     proximite_Voltaire = compare_dictionary(dict_Voltaire, considered_values)
+#     print("Voltaire : " + str(proximite_Voltaire))
+#
+# if args.A or args.a == "Zola":
+#     proximite_Zola = compare_dictionary(dict_Zola, considered_values)
+#     print("Zola : " + str(proximite_Zola))
 
-if args.A or args.a == "Hugo":
-    proximite_Hugo = compare_dictionary(dict_Hugo, considered_values)
-    print("Hugo : " + str(proximite_Hugo))
-
-if args.A or args.a == "Ségur":
-    proximite_Segur = compare_dictionary(dict_Segur, considered_values)
-    print("Segur : " + str(proximite_Segur))
-
-if args.A or args.a == "Verne":
-    proximite_Verne = compare_dictionary(dict_Verne, considered_values)
-    print("Verne : " + str(proximite_Verne))
-
-if args.A or args.a == "Voltaire":
-    proximite_Voltaire = compare_dictionary(dict_Voltaire, considered_values)
-    print("Voltaire : " + str(proximite_Voltaire))
-
-if args.A or args.a == "Zola":
-    proximite_Zola = compare_dictionary(dict_Zola, considered_values)
-    print("Zola : " + str(proximite_Zola))
 
 
+
+# MARKOV CHAIN
+markov_list = markov_chain(dict_Zola)
+print(markov_list)
 
 
 
