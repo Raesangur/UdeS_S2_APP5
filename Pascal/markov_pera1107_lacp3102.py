@@ -458,6 +458,17 @@ def GenerateText(wordList: [(str, int)],
     return text
 
 
+def PrintInFile(text, fileName):
+    """
+        Print some text to a specified file. Creates the file if it doesn't exit, overwrite content
+    :param text:      Text to print
+    :param fileName:  File to print into
+    """
+    f = open(str(fileName), "w+", encoding="utf8")
+    f.write(text)
+    f.close()
+
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Main: lecture des paramètres et appel des méthodes appropriées
 #       argparse permet de lire les paramètres sur la ligne de commande
@@ -465,6 +476,7 @@ def main():
     args = ParseArgs()
     rep_aut = GetPath(args.d)
     authors = [x.lower() for x in os.listdir(rep_aut)]
+    author = str(args.a).lower()
 
     # Si mode verbose, refléter les valeurs des paramètres passés sur la ligne de commande
     if args.v:
@@ -474,9 +486,11 @@ def main():
     # À partir d'ici, vous devriez inclure les appels à votre code
 
     # Check inputs:
-    if args.a and args.A:
-        print("Args -a {0} and -A have both been provided, -a input will be ignored".format(args.a))
-        args.a = None
+    if author and args.A:
+        print("Args -a {0} and -A have both been provided, -a input will be ignored".format(author))
+        author = None
+
+    print(args.P)
 
     # List all the words of the different authors
     authorWords: {str: [(str, int)]} = {}
@@ -490,8 +504,8 @@ def main():
             guess = FindProbableAuthor(args.f, authorWords, not args.P, args.m)
             print("{} {:0.1f}".format(guess[0], guess[1]))
 
-        elif args.a:
-            guess = FindProbableAuthor(args.f, CreateSubDict(authorWords, args.a), not args.P, args.m)
+        elif author:
+            guess = FindProbableAuthor(args.f, CreateSubDict(authorWords, author), not args.P, args.m)
             print("{} {:0.1f}".format(guess[0], guess[1]))
 
         else:
@@ -503,8 +517,8 @@ def main():
             n = FindnthWord(args.F, CombineDict(authorWords))
             print(n[0] + " " + str(n[1]))
 
-        elif args.a:
-            n = FindnthWord(args.F, CreateSubDict(authorWords, args.a))
+        elif author:
+            n = FindnthWord(args.F, CreateSubDict(authorWords, author))
             print(n[0] + " " + str(n[1]))
 
         else:
@@ -512,15 +526,16 @@ def main():
 
     # Generate a text
     if args.G:
-        text = ""
         if args.A:
             for a in authors:
                 text = GenerateText(authorWords[a][:], args.G, args.m)
-                print(a + " :: Début: " + text + " :: Fin")
+                text = a + " :: Début: " + text + " :: Fin"
+                PrintInFile(text, args.g)
 
-        elif args.a:
-            text = GenerateText(authorWords[str(args.a)][:], args.G, args.m)
-            print(args.a + " :: Début: " + text + " :: Fin")
+        elif author:
+            text = GenerateText(authorWords[str(author)][:], args.G, args.m)
+            text = author + " :: Début: " + text + " :: Fin"
+            PrintInFile(text, args.g)
 
         else:
             print("Author wasn't specified, try again")
